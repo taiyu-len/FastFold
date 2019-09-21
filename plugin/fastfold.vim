@@ -91,20 +91,32 @@ function! s:WinDo( command )
   endif
 endfunction
 
+function! s:WinExecute( id, command )
+  call win_execute(a:id, 'keepjumps noautocmd ' . a:command, "silent!")
+endfunction
+
 " WinEnter then TabEnter then BufEnter then BufWinEnter
 function! s:UpdateWin()
-  let s:curwin = winnr()
-  call s:WinDo('if winnr() is s:curwin | call s:LeaveWin() | endif')
-  call s:WinDo('if winnr() is s:curwin | call s:EnterWin() | endif')
+  let l:id = win_getid(winnr())
+  call s:WinExecute(l:id, 'call s:LeaveWin()')
+  call s:WinExecute(l:id, 'redraw')
+  call s:WinExecute(l:id, 'call s:EnterWin()')
 endfunction
 
 function! s:UpdateBuf(feedback)
   " skip if another session still loading
   if exists('g:SessionLoad') | return | endif
 
-  let s:curbuf = bufnr('%')
-  call s:WinDo("if bufnr('%') is s:curbuf | call s:LeaveWin() | endif")
-  call s:WinDo("if bufnr('%') is s:curbuf | call s:EnterWin() | endif")
+  let l:restwin = winrestcmd()
+  let l:windows = win_findbuf(bufnr('%'))
+
+  for l:id in l:windows
+    call s:WinExecute(l:id, 'call s:LeaveWin()')
+    call s:WinExecute(l:id, 'redraw')
+    call s:WinExecute(l:id, 'call s:EnterWin()')
+  endfor
+
+  silent! execute 'noautocmd ' . l:restwin
 
   if !a:feedback | return | endif
 
